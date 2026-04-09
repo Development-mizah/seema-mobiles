@@ -1,22 +1,41 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { Plus, Search, Pencil, Trash2, Filter } from "lucide-react";
 
-const BRANDS = [
-  "Apple",
-  "Samsung",
-  "OnePlus",
-  "Xiaomi",
-  "Realme",
-  "Vivo",
-  "Oppo",
-  "Motorola",
-  "Nokia",
-  "Other",
-];
+// 🔥 REMOVE THIS
+// const BRANDS = [...]
+
+// 🔥 ADD THIS
+const compressImage = (file, quality = 0.7, maxWidth = 800) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const scale = maxWidth / img.width;
+
+        canvas.width = maxWidth;
+        canvas.height = img.height * scale;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const compressed = canvas.toDataURL("image/jpeg", quality);
+        resolve(compressed);
+      };
+    };
+
+    reader.readAsDataURL(file);
+  });
+};
+
 const STORAGE = ["16GB", "32GB", "64GB", "128GB", "256GB", "512GB", "1TB"];
 const RAM = ["2GB", "3GB", "4GB", "6GB", "8GB", "12GB", "16GB"];
 const WARRANTY = [
@@ -48,13 +67,42 @@ const emptyForm = {
   sellerName: "",
   sellerPhone: "",
   sellerType: "Dealer",
+  images: [],
 };
 
 function StockForm({ initial = emptyForm, onSave, onClose }) {
   const [form, setForm] = useState({ ...emptyForm, ...initial });
+
+  // brand states
+  const [showBrandInput, setShowBrandInput] = useState(false);
+  const [brandName, setBrandName] = useState("");
+  const [brandCountry, setBrandCountry] = useState("");
+
+  // searchable dropdown
+  const [brandSearch, setBrandSearch] = useState("");
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+
+  const brandRef = useRef();
+
+  const brands = useLiveQuery(() => db.brands.toArray(), []) ?? [];
+
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const num = (k, v) =>
     setForm((p) => ({ ...p, [k]: v === "" ? "" : Number(v) }));
+
+  const filteredBrands = brands.filter((b) =>
+    b.name.toLowerCase().includes(brandSearch.toLowerCase()),
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (brandRef.current && !brandRef.current.contains(e.target)) {
+        setShowBrandDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -69,32 +117,115 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
+        {/* NAME */}
         <div className="col-span-2">
           <label className="field-label">Mobile Name *</label>
           <input
             className="field"
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
-            placeholder="e.g. iPhone 15 Pro"
             required
           />
         </div>
-        <div>
+
+        {/* BRAND */}
+        <div ref={brandRef}>
           <label className="field-label">Brand *</label>
-          <select
-            className="field"
-            value={form.brand}
-            onChange={(e) => set("brand", e.target.value)}
-            required
-          >
-            <option value="">Select Brand</option>
-            {BRANDS.map((b) => (
-              <option key={b}>{b}</option>
-            ))}
-          </select>
+
+          <div className="flex gap-2">
+            <input
+              className="field flex-1"
+              placeholder="Search brand..."
+              value={brandSearch || form.brand}
+              onChange={(e) => {
+                setBrandSearch(e.target.value);
+                setShowBrandDropdown(true);
+              }}
+              onFocus={() => setShowBrandDropdown(true)}
+            />
+
+            <button
+              type="button"
+              className="btn-primary px-3"
+              onClick={() => setShowBrandInput((p) => !p)}
+            >
+              +
+            </button>
+          </div>
+
+          {/* DROPDOWN */}
+          {showBrandDropdown && (
+            <div className="absolute z-50 mt-1 w-full bg-black border border-white/10 rounded-lg shadow-lg">
+              <div className="max-h-[200px] overflow-y-auto">
+                {filteredBrands.map((b) => (
+                  <div
+                    key={b.id}
+                    onClick={() => {
+                      set("brand", b.name);
+                      setBrandSearch("");
+                      setShowBrandDropdown(false);
+                    }}
+                    className="px-3 py-2 hover:bg-white/10 cursor-pointer"
+                  >
+                    {b.name} {b.country && `(${b.country})`}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* INLINE ADD */}
+          {showBrandInput && (
+            <div className="mt-2 space-y-2">
+              <input
+                className="field"
+                placeholder="Brand Name"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+              />
+              <input
+                className="field"
+                placeholder="Country"
+                value={brandCountry}
+                onChange={(e) => setBrandCountry(e.target.value)}
+              />
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={async () => {
+                    if (!brandName.trim()) return;
+
+                    await db.brands.add({
+                      name: brandName,
+                      country: brandCountry || "",
+                    });
+
+                    set("brand", brandName);
+                    setBrandName("");
+                    setBrandCountry("");
+                    setShowBrandInput(false);
+                  }}
+                >
+                  Save
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => setShowBrandInput(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* TYPE */}
         <div>
-          <label className="field-label">Type *</label>
+          <label className="field-label">Type</label>
           <select
             className="field"
             value={form.type}
@@ -104,24 +235,28 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
             <option value="Used">Second Hand</option>
           </select>
         </div>
+
+        {/* MODEL */}
         <div>
-          <label className="field-label">Model No.</label>
+          <label className="field-label">Model</label>
           <input
             className="field"
             value={form.model}
             onChange={(e) => set("model", e.target.value)}
-            placeholder="e.g. A3108"
           />
         </div>
+
+        {/* COLOR */}
         <div>
           <label className="field-label">Color</label>
           <input
             className="field"
             value={form.color}
             onChange={(e) => set("color", e.target.value)}
-            placeholder="e.g. Black"
           />
         </div>
+
+        {/* STORAGE */}
         <div>
           <label className="field-label">Storage</label>
           <select
@@ -135,6 +270,8 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
             ))}
           </select>
         </div>
+
+        {/* RAM */}
         <div>
           <label className="field-label">RAM</label>
           <select
@@ -148,22 +285,51 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
             ))}
           </select>
         </div>
+
+        {/* IMAGES */}
         <div className="col-span-2">
-          <label className="field-label">IMEI Number</label>
+          <label className="field-label">Images</label>
           <input
+            type="file"
+            multiple
             className="field"
-            value={form.imei}
-            onChange={(e) => set("imei", e.target.value)}
-            placeholder="15-digit IMEI"
+            onChange={async (e) => {
+              const files = Array.from(e.target.files);
+              const compressed = await Promise.all(
+                files.map((file) => compressImage(file)),
+              );
+              set("images", [...(form.images || []), ...compressed]);
+            }}
           />
+
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {form.images?.map((img, i) => (
+              <div key={i} className="relative">
+                <img src={img} className="w-16 h-16 rounded" />
+
+                <button
+                  onClick={() =>
+                    set(
+                      "images",
+                      form.images.filter((_, idx) => idx !== i),
+                    )
+                  }
+                  className="absolute top-0 right-0 bg-red-500 text-white text-xs"
+                >
+                  x
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* SELLER */}
         <div className="col-span-2">
           <label className="field-label">Seller Name</label>
           <input
             className="field"
             value={form.sellerName}
             onChange={(e) => set("sellerName", e.target.value)}
-            placeholder="e.g. Raj Mobiles"
           />
         </div>
 
@@ -173,7 +339,6 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
             className="field"
             value={form.sellerPhone}
             onChange={(e) => set("sellerPhone", e.target.value)}
-            placeholder="9876543210"
           />
         </div>
 
@@ -189,40 +354,40 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
             <option>Supplier</option>
           </select>
         </div>
+
+        {/* PRICES */}
         <div>
-          <label className="field-label">Purchase Price (₹) *</label>
+          <label className="field-label">Purchase Price</label>
           <input
             type="number"
             className="field"
             value={form.purchasePrice}
             onChange={(e) => num("purchasePrice", e.target.value)}
-            placeholder="0"
-            required
           />
         </div>
+
         <div>
-          <label className="field-label">Selling Price (₹) *</label>
+          <label className="field-label">Selling Price</label>
           <input
             type="number"
             className="field"
             value={form.sellingPrice}
             onChange={(e) => num("sellingPrice", e.target.value)}
-            placeholder="0"
-            required
           />
         </div>
+
+        {/* STOCK */}
         <div>
-          <label className="field-label">Stock Qty *</label>
+          <label className="field-label">Stock</label>
           <input
             type="number"
             className="field"
             value={form.stock}
             onChange={(e) => num("stock", e.target.value)}
-            placeholder="1"
-            required
-            min="0"
           />
         </div>
+
+        {/* WARRANTY */}
         <div>
           <label className="field-label">Warranty</label>
           <select
@@ -235,6 +400,8 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
             ))}
           </select>
         </div>
+
+        {/* CONDITION */}
         {form.type === "Used" && (
           <div>
             <label className="field-label">Condition</label>
@@ -243,13 +410,14 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
               value={form.condition}
               onChange={(e) => set("condition", e.target.value)}
             >
-              <option value="">Select</option>
               {COND.map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>
           </div>
         )}
+
+        {/* STATUS */}
         <div>
           <label className="field-label">Status</label>
           <select
@@ -262,25 +430,23 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
             ))}
           </select>
         </div>
+
+        {/* NOTES */}
         <div className="col-span-2">
           <label className="field-label">Notes</label>
           <input
             className="field"
             value={form.notes}
             onChange={(e) => set("notes", e.target.value)}
-            placeholder="Any extra info..."
           />
         </div>
       </div>
+
       <div className="flex gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="btn-ghost flex-1 justify-center"
-        >
+        <button type="button" onClick={onClose} className="btn-ghost flex-1">
           Cancel
         </button>
-        <button type="submit" className="btn-primary flex-1 justify-center">
+        <button type="submit" className="btn-primary flex-1">
           Save
         </button>
       </div>
@@ -414,6 +580,7 @@ export default function Stocks() {
           <table className="w-full">
             <thead className="tbl-head">
               <tr>
+                <th>Image</th>
                 <th>Name / Model</th>
                 <th>Brand</th>
                 <th>Type</th>
@@ -442,12 +609,26 @@ export default function Stocks() {
               {filtered.map((s) => (
                 <tr key={s.id} className="tbl-row">
                   <td>
-                    <p className="text-white font-medium">{s.name}</p>
-                    {s.model && (
-                      <p className="text-gray-600 text-xs">
-                        {s.model} {s.color && `· ${s.color}`}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {s.images?.[0] && (
+                        <img
+                          src={s.images[0]}
+                          alt={s.name}
+                          className="w-12 h-12 rounded-lg object-cover"
+                        />
+                      )}
+                    </div>
+                  </td>
+
+                  <td>
+                    <div>
+                      <p className="text-white font-medium">{s.name}</p>
+                      {s.model && (
+                        <p className="text-gray-600 text-xs">
+                          {s.model} {s.color && `· ${s.color}`}
+                        </p>
+                      )}
+                    </div>
                   </td>
                   <td className="text-gray-400">{s.brand}</td>
                   <td>
