@@ -42,7 +42,10 @@ export default function Dashboard({ onNav }) {
             (i) =>
               i.name?.toLowerCase().includes(query) ||
               i.brand?.toLowerCase().includes(query) ||
-              i.imei?.toLowerCase().includes(query),
+              i.imei?.toLowerCase().includes(query) ||
+              i.imei1?.toLowerCase().includes(query) ||
+              i.imei2?.toLowerCase().includes(query),
+
           )
           .map((i) => ({ ...i, type: "stocks" })),
 

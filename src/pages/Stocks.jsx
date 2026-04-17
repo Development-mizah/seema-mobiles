@@ -52,11 +52,10 @@ const emptyForm = {
   name: "",
   brand: "",
   type: "New",
-  model: "",
-  color: "",
   storage: "",
   ram: "",
-  imei: "",
+  imei1: "",
+  imei2: "",
   purchasePrice: "",
   sellingPrice: "",
   stock: "1",
@@ -237,22 +236,24 @@ function StockForm({ initial = emptyForm, onSave, onClose }) {
         </div>
 
         {/* MODEL */}
+        {/* IMEI 1 (REQUIRED) */}
         <div>
-          <label className="field-label">Model</label>
+          <label className="field-label">IMEI 1 *</label>
           <input
             className="field"
-            value={form.model}
-            onChange={(e) => set("model", e.target.value)}
+            value={form.imei1}
+            onChange={(e) => set("imei1", e.target.value)}
+            required
           />
         </div>
 
-        {/* COLOR */}
+        {/* IMEI 2 (OPTIONAL) */}
         <div>
-          <label className="field-label">Color</label>
+          <label className="field-label">IMEI 2 (Optional)</label>
           <input
             className="field"
-            value={form.color}
-            onChange={(e) => set("color", e.target.value)}
+            value={form.imei2}
+            onChange={(e) => set("imei2", e.target.value)}
           />
         </div>
 
@@ -586,6 +587,7 @@ export default function Stocks() {
                 <th>Type</th>
                 <th>Storage / RAM</th>
                 <th>IMEI</th>
+                <th>IMEI 2</th>
                 <th>Seller</th>
                 <th>Purchase ₹</th>
                 <th>Selling ₹</th>
@@ -643,7 +645,10 @@ export default function Stocks() {
                     {s.ram && ` / ${s.ram}`}
                   </td>
                   <td className="text-gray-600 text-xs font-mono">
-                    {s.imei || "—"}
+                    {s.imei || s.imei1 || "—"}
+                  </td>
+                  <td className="text-gray-600 text-xs font-mono">
+                    {s.imei2 || "—"}
                   </td>
                   <td>
                     {s.sellerName ? (

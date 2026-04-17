@@ -15,6 +15,8 @@ const emptyForm = {
   phone: "",
   itemType: "Stock",
   itemDescription: "",
+  imei1: "",
+  imei2: "",
   qty: "1",
   amount: "",
   paymentMode: "Cash",
@@ -152,6 +154,11 @@ function SaleForm({ initial = emptyForm, onSave, onClose }) {
                           set("amount", item.sellingPrice || "");
                           setPurchasePrice(item.purchasePrice || "");
                           setSelectedItem(item);
+                          setSelectedItem(item);
+                          if (form.itemType === "Stock") {
+                            set("imei1", item.imei || item.imei1 || "");
+                            set("imei2", item.imei2 || "");
+                          }
                           setShowDropdown(false);
                         }}
                       >
@@ -171,6 +178,30 @@ function SaleForm({ initial = emptyForm, onSave, onClose }) {
             />
           )}
         </div>
+
+        {/* IMEI (ONLY FOR MOBILE) */}
+        {form.itemType === "Stock" && (
+          <>
+            <div>
+              <label className="field-label">IMEI 1 *</label>
+              <input
+                className="field"
+                value={form.imei1}
+                onChange={(e) => set("imei1", e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="field-label">IMEI 2 (Optional)</label>
+              <input
+                className="field"
+                value={form.imei2}
+                onChange={(e) => set("imei2", e.target.value)}
+              />
+            </div>
+          </>
+        )}
 
         {/* Purchase Price */}
         {isDropdown && purchasePrice && (
@@ -334,6 +365,7 @@ export default function Sales() {
         s.customerName,
         s.phone || "-",
         s.itemDescription,
+        s.imei1,
         s.qty,
         `Rs ${s.purchasePrice || 0}`, // ✅ FIX SYMBOL
         `Rs ${s.amount || 0}`,
@@ -348,6 +380,7 @@ export default function Sales() {
           "Customer",
           "Phone",
           "Item",
+          "IMEI",
           "Qty",
           "Purchase",
           "Amount",
@@ -370,6 +403,8 @@ export default function Sales() {
         Customer: s.customerName,
         Phone: s.phone,
         Item: s.itemDescription,
+        IMEI1: s.imei1,
+        IMEI2: s.imei2,
         Quantity: s.qty,
         PurchasePrice: s.purchasePrice || 0,
         Amount: s.amount || 0,
@@ -551,6 +586,7 @@ export default function Sales() {
                 <th>Phone</th>
                 <th>Item</th>
                 <th>Type</th>
+                <th>IMEI</th>
                 <th>Purchased Price</th>
                 <th>Qty</th>
                 <th>Amount</th>
@@ -589,6 +625,10 @@ export default function Sales() {
                   </td>
                   <td>
                     <span className="badge badge-gray">{sale.itemType}</span>
+                  </td>
+                  <td className="text-xs text-gray-400">
+                    {sale.imei1}
+                    {sale.imei2 && <div>{sale.imei2}</div>}
                   </td>
                   <td className="text-yellow-400 font-medium">
                     ₹{sale.purchasePrice?.toLocaleString("en-IN") || 0}
