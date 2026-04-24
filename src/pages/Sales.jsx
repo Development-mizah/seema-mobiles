@@ -162,7 +162,8 @@ function SaleForm({ initial = emptyForm, onSave, onClose }) {
                           setShowDropdown(false);
                         }}
                       >
-                        {item.name} ({item.storage} / {item.ram})
+                        {item.name} (
+                        {item.variant || `${item.ram} / ${item.storage}`})
                       </div>
                     ))}
                 </div>
@@ -587,7 +588,6 @@ export default function Sales() {
                 <th>Item</th>
                 <th>Type</th>
                 <th>IMEI</th>
-                <th>Purchased Price</th>
                 <th>Qty</th>
                 <th>Amount</th>
                 <th>Profit</th>
@@ -629,9 +629,6 @@ export default function Sales() {
                   <td className="text-xs text-gray-400">
                     {sale.imei1}
                     {sale.imei2 && <div>{sale.imei2}</div>}
-                  </td>
-                  <td className="text-yellow-400 font-medium">
-                    ₹{sale.purchasePrice?.toLocaleString("en-IN") || 0}
                   </td>
                   <td className="text-gray-400">{sale.qty}</td>
                   <td className="text-emerald-400 font-bold">

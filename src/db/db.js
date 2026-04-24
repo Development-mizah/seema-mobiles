@@ -2,8 +2,8 @@ import Dexie from "dexie";
 
 export const db = new Dexie("SeemaMobilesDB");
 
-db.version(3).stores({
-  stocks: "++id, &imei1, &imei2, name, brand, type, status, sellerName, sellerPhone, createdAt",
+db.version(5).stores({
+  stocks: "++id, &imei1, &imei2, name, variant, type, status, sellerName, sellerPhone, sellerType, createdAt",
   sales: "++id, imei1, imei2, customerName, phone, itemDescription, createdAt",
   requirements: "++id, customerName, phone, brand, status, createdAt",
   services: "++id, customerName, phone, deviceName, status, createdAt",
@@ -31,10 +31,10 @@ db.on("populate", () => {
   db.stocks.bulkAdd([
     {
       name: "iPhone 15 Pro Max",
-      brand: "Apple",
       type: "New",
       storage: "256GB",
       ram: "8GB",
+      variant: "8GB/256GB",
       imei1: "352145678901234",
       imei2: "",
       purchasePrice: 124999,
@@ -47,10 +47,10 @@ db.on("populate", () => {
     },
     {
       name: "Samsung Galaxy S24 Ultra",
-      brand: "Samsung",
       type: "New",
       storage: "512GB",
       ram: "12GB",
+      variant: "8GB/256GB",
       imei1: "864523019876543",
       imei2: "",
       purchasePrice: 119999,
@@ -63,10 +63,10 @@ db.on("populate", () => {
     },
     {
       name: "OnePlus 12",
-      brand: "OnePlus",
       type: "New",
       storage: "256GB",
       ram: "12GB",
+      variant: "8GB/256GB",
       imei1: "359812345678901",
       imei2: "",
       purchasePrice: 59999,
